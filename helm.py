@@ -19,7 +19,8 @@ class Config():
                 debug=False,
                 dry_run=False,
                 release="",
-                chart=""):
+                chart="",
+                force=False):
         self.api_server = api_server
         self.token = token
         self.config_path = config_path
@@ -32,6 +33,7 @@ class Config():
         self.dry_run = dry_run
         self.release = release
         self.chart = chart
+        self.force = force
 
     @property
     def api_server(self):
@@ -69,6 +71,9 @@ class Config():
     @property
     def chart(self):
         return self.__chart
+    @property
+    def force(self):
+        return self.__force
 
     @api_server.setter
     def api_server(self, api_server):
@@ -106,6 +111,9 @@ class Config():
     @chart.setter
     def chart(self, chart):
         self.__chart = chart
+    @force.setter
+    def force(self, force):
+        self.__force = force
 
 
 '''
@@ -127,7 +135,7 @@ def resolveEnv():
     skip_tls = strToBoolHandler(skip_tls)
     cert_data = os.environ.get("CERT_DATA") or os.environ.get("PLUGIN_CERT_DATA") or ""
     namespace = os.environ.get("NAMESPACE") or os.environ.get("PLUGIN_NAMESPACE") or ""
-    
+
     values = os.environ.get("PLUGIN_VALUES") or ""
     string_values = os.environ.get("PLUGIN_STRING_VALUES") or ""
     debug = os.environ.get("PLUGIN_DEBUG") or "false"
@@ -136,6 +144,8 @@ def resolveEnv():
     dry_run = strToBoolHandler(dry_run)
     release = os.environ.get("PLUGIN_RELEASE") or ""
     chart = os.environ.get("PLUGIN_CHART") or ""
+    force = os.environ.get("PLUGIN_FORCE") or "false"
+    force = strToBoolHandler(force)
 
     return Config(
         api_server,
@@ -149,7 +159,8 @@ def resolveEnv():
         debug,
         dry_run,
         release,
-        chart)
+        chart,
+        force)
     
 
 
@@ -183,9 +194,12 @@ def genKubeconfig(conf):
 
 
 def genCommand(conf):
-    cmd = ["upgrade", "--install"]
+    cmd = ["helm", "upgrade", "--install"]
     cmd.append(conf.release)
     cmd.append(conf.chart)
+    cmd.append("--namespace")
+    cmd.append(conf.namespace)
+
     if conf.values != "":
         cmd.append("--set")
         cmd.append(conf.values)
@@ -194,12 +208,17 @@ def genCommand(conf):
         cmd.append(conf.string_values)
     if conf.debug:
         cmd.append("--debug")
+    if conf.dry_run:
+        cmd.append("--dry-run")
+    if conf.force:
+        cmd.append("--force")
     return cmd
 
 
-def runHelm(arg):
-    p = subprocess.Popen(["helm"].extend(cmd), shell=False)
-    p.communicate()
+def runHelm(cmd):
+    p = subprocess.Popen(cmd, shell=False, stdout=subprocess.PIPE)
+    res, err = p.communicate()
+    print(res.decode("UTF-8"))
 
 
 if __name__ == "__main__":
