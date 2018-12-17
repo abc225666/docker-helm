@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+import re
 import subprocess
 from distutils.util import strtobool
 from jinja2 import Template
@@ -202,10 +203,24 @@ def genCommand(conf):
 
     if conf.values != "":
         cmd.append("--set")
-        cmd.append(conf.values)
+        result=""
+        for s in conf.values.split(','):
+            s = os.path.expandvars(s)
+            s = s.replace('"', '\\"').replace(',', '\,').replace('\\n', '\n')
+            result += s + ','
+        result = re.sub(",$", "", result)
+        cmd.append(result)
     if conf.string_values != "":
         cmd.append("--set-string")
-        cmd.append(conf.string_values)
+        result=""
+        for s in conf.string_values.split(','):
+            s = os.path.expandvars(s)
+            s = s.replace('"', '\\"').replace(',', '\,').replace('\\n', '\n')
+            result += s + ','
+        result = re.sub(",$", "", result)
+        cmd.append(result)
+        if conf.debug:
+            print("string_val: ", result)
     if conf.debug:
         cmd.append("--debug")
     if conf.dry_run:
